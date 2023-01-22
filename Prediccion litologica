@@ -1,0 +1,82 @@
+pip install lasio
+pip install pycaret
+import pandas as pd
+import matplotlib.pyplot as plt
+from pycaret.datasets import get_data
+import numpy as np
+path = './02_WellFaciesClassification/F02-1_logs.las'
+data = np.loadtxt(path, skiprows=35)
+mneumonics = ['DEPTH', 'GR', 'DT', 'AIR', 'RHOB', 'PHIE']
+data= pd.DataFrame(data, columns=mneumonics)
+data = data.dropna()
+data = data.drop(columns=['AI', 'AIR']) 
+fcode = pd.read_csv('/content/petroleum-data-analytics-series/02_WellFaciesClassification/facies_code.csv')
+fcode
+tb = fcode.MARKER_DEPH.values
+f = fcode.FACIES.values
+depth = data.DEPTH.valvues
+facies =[]
+for i in range(len(depth)):
+  for j in range(len(tb)-1):
+    if depth [i] > tb[j] and depth [i] <= tb[j+1]:
+      facies.append(f[j])
+data['FACIES'] = facies
+from IPython.core.pylabtools import figsize
+logs = data.columns[1: ]
+rows,cols = 1,5
+fid,ax = plt.plt.subplots(nrows=rows, ncols=cols, figsize=(12,6), sharey=True)
+for i in range (cols):
+  if i < cols-1:
+    ax[i].plot(data[logs[i]], data.DEPTH, color='b', lw=0.5)
+    ax[i].set_title('%s' %logs[i])
+    ax[i].minorticks_on()
+    ax[i].grid(which='major', linestyle='-', linewidth='0.5', color='yelow')
+    ax[i].grid(which='minor', linestyle=':', linewidth='0.5', color= 'black')
+    ax[i].set_ylim(max(data.DEPTH),min(data.DEPTH))
+  elif i==cols-1:
+    F= np.vstack((facies,facies)).T
+    ax[i].imshow(F, aspect='auto', extent=[0,1,max(dt.DEPTH), min(data.DEPTH)])
+    ax[i].set_title('FACIES')
+    #POSPONER GRAFICOS NEUTRON Y DENSITY
+superponer_plot ('RHOB', 'PHIE')
+X_train = data[['RHOB', 'DT', 'GR', 'PHIE']]
+y_train = data.FACIES
+pipe = make_pipeline(StandardScaler(), Knn(n_neighbors=5))
+cv = StratifiedKFold(5, shuffle=True)
+cv_scores = cross_val_score(pipe, X_train, y_train, cv=cv, scoring='accuracy')
+mean_cv_scores = np.mean(cv_scores)
+print('Accuracy mean from 5-fold CV:', mean_cv_scores)
+pipe.fit(X_train, y_train)
+y_pred = pipe.predict(X_train)
+#clasificacion multiclase
+dataset = get_data('Litology')
+dataset.shape
+data = dataset.sample(frac=0.9, random_state=786).reset_index(drop=True)
+data_unseen = dataset.drop(data.index).reset_index(drop=True)
+print('Data for Modeling: ' + str(data.shape))
+print('Unseen Data For Predictions: ' + str(data_unseen.shape))
+from pycaret.clasification import *
+exp_mclf101 = setup(data = data, target = 'FACIES', session_id=150) 
+compare_models
+dt = create_model('dt')
+print(dt)
+Knn = create_model('knn')
+lr = create_model ('lr')
+#MIRAR RANDOM FOREST, XGBOOST Y CAT BOOST
+tuned_dt = tune_model('dt')
+print(tuned_dt)
+tuned_knn = tune_model('knn')
+tuned_lr = tune_model('lr')
+plot_model(tuned_knn, plot = 'confusion_matrix')
+plot_model(tuned_knn, plot = 'class_report')
+plot_model(tuned_knn, plot = 'boundary')
+evaluate_model(tuned_knn)
+predict_model(tuned_knn)
+final_knn = finalize_model(tuned_knn)
+print(final_knn)
+predict_model(final_knn)
+unseen_predictions = predict_model(final_knn, data=data_unseen)
+unseen_predictions()
+save_model(final_knn, 'FINAL KNN MODEL 16Sep2022')
+new_prediction = predict_model(saved_final_knn, data = data_unseen)
+new_prediction
